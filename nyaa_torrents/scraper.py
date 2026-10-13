@@ -17,7 +17,7 @@ class NyaaScrap:
     def _search_site(self, query, base_url):
         search_query = urllib.parse.quote_plus(query)
         page = 1
-        results = []
+        pages = []
         previous_results = []
 
         while True:
@@ -69,13 +69,15 @@ class NyaaScrap:
                     break
                 if previous_results and current_page_results == previous_results:
                     break
-                results.extend(current_page_results)
+                pages.append(current_page_results)
                 previous_results = current_page_results
                 page += 1
             except requests.RequestException:
                 break
             except Exception:
                 break
+
+        results = [item for p in pages for item in p]
 
         output_data = []
         for i, result in enumerate(results, 1):
@@ -89,9 +91,95 @@ class NyaaScrap:
             })
         return json.dumps(output_data, ensure_ascii=False)
 
+    def search_pages(self, query, base_url, page):
+        search_query = urllib.parse.quote_plus(query)
+        url = f"{base_url}?q={search_query}&f=0&c=0_0&p={page}"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+        except requests.RequestException:
+            return None
+        soup = BeautifulSoup(response.text, 'html.parser')
+        table = soup.find('table', class_='torrent-list')
+        if not table:
+            return None
+        rows = table.find_all('tr')[1:]
+        if not rows:
+            return None
+        out = []
+        for row in rows:
+            try:
+                name_cell = row.find('td', colspan="2")
+                if not name_cell:
+                    continue
+                name_links = name_cell.find_all('a', href=lambda x: x and '/view/' in x)
+                if not name_links:
+                    continue
+                name = name_links[-1].get_text(strip=True)
+                torrent_link = None
+                magnet_link = None
+                for link in row.find_all('a'):
+                    href = link.get('href', '')
+                    if href.startswith('/download/'):
+                        torrent_link = f"{base_url.rstrip('/')}{href}"
+                    elif href.startswith('magnet:'):
+                        magnet_link = href
+                size_td = row.find('td', class_='text-center', string=lambda x: x and ('MiB' in x or 'GiB' in x))
+                size = size_td.get_text(strip=True) if size_td else "N/A"
+                date_td = row.find('td', class_='text-center', attrs={'data-timestamp': True})
+                date = date_td.get_text(strip=True) if date_td else "N/A"
+                out.append({
+                    'name': name,
+                    'torrent': torrent_link,
+                    'magnet': magnet_link,
+                    'size': size,
+                    'date': date
+                })
+            except Exception:
+                continue
+        return out or None
 
-def search_nyaa(query, sukebei=False):
+
+def search_nyaa(query, sukebei=False, limit=None, sort=None):
     scraper = NyaaScrap()
-    if sukebei:
-        return scraper.search_fap(query)
-    return scraper.search_fun(query)
+    base_url = "https://sukebei.nyaa.si/" if sukebei else "https://nyaa.si/"
+
+    pages = []
+    page = 1
+    previous = None
+    while True:
+        current = scraper.search_pages(query, base_url, page)
+        if current is None:
+            break
+        if previous is not None and current == previous:
+            break
+        pages.append(current)
+        previous = current
+        page += 1
+
+    if limit is not None and limit > 0:
+        pages = pages[-limit:]
+
+    results = [item for p in pages for item in p]
+
+    if sort == "date":
+        results = results
+    elif sort == "name":
+        results.sort(key=lambda x: x['name'].lower())
+    elif sort == "reverse":
+        results = list(reversed(results))
+
+    output_data = []
+    for i, result in enumerate(results, 1):
+        output_data.append({
+            'result_number': i,
+            'name': result['name'],
+            'torrent': result['torrent'],
+            'magnet': result['magnet'],
+            'size': result['size'],
+            'date': result['date']
+        })
+    return json.dumps(output_data, ensure_ascii=False)
