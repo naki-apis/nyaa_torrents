@@ -1,3 +1,4 @@
+import datetime
 import json
 import urllib.parse
 import requests
@@ -143,19 +144,35 @@ class NyaaScrap:
         return out or None
 
 
-def search_nyaa(query, sukebei=False, limit=None, sort=None):
+def search_nyaa(query, sukebei=False, limit=None, sort=None, days=None):
     scraper = NyaaScrap()
     base_url = "https://sukebei.nyaa.si/" if sukebei else "https://nyaa.si/"
 
+    cutoff = None
+    if days is not None and days >= 0:
+        cutoff = (datetime.datetime.now() - datetime.timedelta(days=days)).date()
+
     results = []
     page = 1
-    while True:
+    stop = False
+    while not stop:
         if limit is not None and limit > 0 and page > limit:
             break
         current = scraper.search_pages(query, base_url, page)
         if current is None:
             break
-        results.extend(current)
+        for item in current:
+            if cutoff is not None:
+                try:
+                    d = datetime.datetime.strptime(item['date'], "%Y-%m-%d %H:%M").date()
+                except (ValueError, TypeError):
+                    continue
+                if d < cutoff:
+                    stop = True
+                    continue
+                results.append(item)
+            else:
+                results.append(item)
         page += 1
 
     if sort == "date":

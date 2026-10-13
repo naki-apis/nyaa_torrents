@@ -42,13 +42,14 @@ def main():
     parser.add_argument("--r18", action="store_true", help="Search on sukebei (R18)")
     parser.add_argument("--json", action="store_true", help="Output raw JSON")
     parser.add_argument("--limit", type=int, default=None, help="Only fetch the N most recent pages (default: all)")
+    parser.add_argument("--days", type=int, default=None, metavar="N", help="Only show results from the last N days (0 = today). Stops fetching pages once the cutoff is reached.")
     parser.add_argument("--sort", choices=["date", "name", "reverse"], default=None, help="Sort results")
     parser.add_argument("--save", metavar="DIR", default=None, help="Save .torrent files to DIR")
     parser.add_argument("--hide", type=parse_hide, default=None, metavar="FIELDS", help="Hide fields: size,date,torrent,magnet (comma-separated)")
     args = parser.parse_args()
 
     query = " ".join(args.query)
-    raw = search_nyaa(query, sukebei=args.r18, limit=args.limit, sort=args.sort)
+    raw = search_nyaa(query, sukebei=args.r18, limit=args.limit, sort=args.sort, days=args.days)
 
     if args.json:
         print(raw)
