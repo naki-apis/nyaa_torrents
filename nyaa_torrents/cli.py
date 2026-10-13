@@ -6,12 +6,13 @@ from .scraper import search_nyaa
 
 def main():
     parser = argparse.ArgumentParser(prog="nyaa", description="Search torrents on nyaa.si")
-    parser.add_argument("query", help="Search query")
+    parser.add_argument("query", nargs="+", help="Search query")
     parser.add_argument("--r18", action="store_true", help="Search on sukebei (R18)")
     parser.add_argument("--json", action="store_true", help="Output raw JSON")
     args = parser.parse_args()
 
-    raw = search_nyaa(args.query, sukebei=args.r18)
+    query = " ".join(args.query)
+    raw = search_nyaa(query, sukebei=args.r18)
 
     if args.json:
         print(raw)
