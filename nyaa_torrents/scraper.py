@@ -147,23 +147,16 @@ def search_nyaa(query, sukebei=False, limit=None, sort=None):
     scraper = NyaaScrap()
     base_url = "https://sukebei.nyaa.si/" if sukebei else "https://nyaa.si/"
 
-    pages = []
+    results = []
     page = 1
-    previous = None
     while True:
+        if limit is not None and limit > 0 and page > limit:
+            break
         current = scraper.search_pages(query, base_url, page)
         if current is None:
             break
-        if previous is not None and current == previous:
-            break
-        pages.append(current)
-        previous = current
+        results.extend(current)
         page += 1
-
-    if limit is not None and limit > 0:
-        pages = pages[-limit:]
-
-    results = [item for p in pages for item in p]
 
     if sort == "date":
         results = results

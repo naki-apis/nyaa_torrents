@@ -25,14 +25,26 @@ def download_torrent(url, dest_dir, filename):
     return True
 
 
+def parse_hide(value):
+    if value is None:
+        return set()
+    valid = {"size", "date", "torrent", "magnet"}
+    parts = [p.strip().lower() for p in value.split(",") if p.strip()]
+    for p in parts:
+        if p not in valid:
+            raise argparse.ArgumentTypeError(f"invalid --hide value: {p} (valid: size,date,torrent,magnet)")
+    return set(parts)
+
+
 def main():
     parser = argparse.ArgumentParser(prog="nyaa", description="Search torrents on nyaa.si")
     parser.add_argument("query", nargs="+", help="Search query")
     parser.add_argument("--r18", action="store_true", help="Search on sukebei (R18)")
     parser.add_argument("--json", action="store_true", help="Output raw JSON")
-    parser.add_argument("--limit", type=int, default=None, help="Only use the last N pages of results")
+    parser.add_argument("--limit", type=int, default=None, help="Only fetch the N most recent pages (default: all)")
     parser.add_argument("--sort", choices=["date", "name", "reverse"], default=None, help="Sort results")
     parser.add_argument("--save", metavar="DIR", default=None, help="Save .torrent files to DIR")
+    parser.add_argument("--hide", type=parse_hide, default=None, metavar="FIELDS", help="Hide fields: size,date,torrent,magnet (comma-separated)")
     args = parser.parse_args()
 
     query = " ".join(args.query)
@@ -52,13 +64,19 @@ def main():
         print("No results found.")
         return
 
+    hidden = args.hide or set()
+
     for item in data:
         print(f"#{item['result_number']}")
         print(f"Name:    {item['name']}")
-        print(f"Size:    {item['size']}")
-        print(f"Date:    {item['date']}")
-        print(f"Torrent: {item['torrent']}")
-        print(f"Magnet:  {item['magnet']}")
+        if "size" not in hidden:
+            print(f"Size:    {item['size']}")
+        if "date" not in hidden:
+            print(f"Date:    {item['date']}")
+        if "torrent" not in hidden:
+            print(f"Torrent: {item['torrent']}")
+        if "magnet" not in hidden:
+            print(f"Magnet:  {item['magnet']}")
         print()
 
         if args.save:
