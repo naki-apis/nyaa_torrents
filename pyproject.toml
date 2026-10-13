@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nyaa_torrents"
+version = "0.1.0"
+description = "Scraper and CLI for nyaa.si and sukebei.nyaa.si"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = []
+dependencies = [
+    "requests",
+    "beautifulsoup4",
+]
+
+[project.scripts]
+nyaa = "nyaa_torrents.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["nyaa_torrents*"]
